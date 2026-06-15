@@ -9,7 +9,7 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-define( 'GHRG_VERSION', '1.0.0' );
+define( 'GHRG_VERSION', '1.0.1' );
 define( 'GHRG_PATH', plugin_dir_path( __FILE__ ) );
 define( 'GHRG_URL', plugin_dir_url( __FILE__ ) );
 require_once GHRG_PATH . 'includes/class-ghrg-settings.php';

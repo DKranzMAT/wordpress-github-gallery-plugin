@@ -17,6 +17,8 @@ class GHRG_Shortcode {
 			'view'  => $opts['default_view'],
 			'sort'  => 'updated',
 			'limit' => 0,
+			'title' => '',
+			'repos' => '',
 		), $atts, 'gh_gallery' );
 
 		$theme = in_array( $atts['theme'], array( 'default', 'constitutional', 'portfolio' ), true ) ? $atts['theme'] : 'default';
@@ -37,7 +39,11 @@ class GHRG_Shortcode {
 			return '<div class="ghrg-empty">No repositories found.</div>';
 		}
 
-		$repos = $this->sort_repos( $repos, $sort );
+		if ( ! empty( $atts['repos'] ) ) {
+			$repos = $this->filter_specific_repos( $repos, $atts['repos'] );
+		} else {
+			$repos = $this->sort_repos( $repos, $sort );
+		}
 
 		if ( $limit > 0 ) {
 			$repos = array_slice( $repos, 0, $limit );
@@ -45,9 +51,13 @@ class GHRG_Shortcode {
 
 		$languages = $this->get_unique_languages( $repos );
 
+		$header_html = $this->render_header( $atts['title'], $opts['github_username'] );
+
 		ob_start();
 		?>
 		<div class="ghrg-wrap" data-theme="<?php echo esc_attr( $theme ); ?>">
+
+			<?php echo $header_html; ?>
 
 			<div class="ghrg-toolbar">
 				<div class="ghrg-toolbar-group">
@@ -95,6 +105,44 @@ class GHRG_Shortcode {
 		</div>
 		<?php
 		return ob_get_clean();
+	}
+
+	private function render_header( $title, $username ) {
+		if ( empty( $title ) ) {
+			return '';
+		}
+		ob_start();
+		?>
+		<div class="ghrg-header">
+			<h2 class="ghrg-title"><?php echo esc_html( $title ); ?></h2>
+			<?php if ( ! empty( $username ) ) : ?>
+				<div class="ghrg-header-links">
+					<a class="ghrg-follow-btn" href="<?php echo esc_url( 'https://github.com/' . $username ); ?>" target="_blank" rel="noopener noreferrer">Follow me on GitHub</a>
+					<a class="ghrg-view-all" href="<?php echo esc_url( 'https://github.com/' . $username ); ?>" target="_blank" rel="noopener noreferrer">View All &rarr;</a>
+				</div>
+			<?php endif; ?>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	private function filter_specific_repos( $repos, $repos_attr ) {
+		$wanted = array_filter( array_map( 'trim', explode( ',', $repos_attr ) ) );
+
+		$repo_map = array();
+		foreach ( $repos as $repo ) {
+			$repo_map[ strtolower( $repo['name'] ) ] = $repo;
+		}
+
+		$filtered = array();
+		foreach ( $wanted as $name ) {
+			$key = strtolower( $name );
+			if ( isset( $repo_map[ $key ] ) ) {
+				$filtered[] = $repo_map[ $key ];
+			}
+		}
+
+		return $filtered;
 	}
 
 	private function render_error( $error ) {
@@ -243,7 +291,6 @@ class GHRG_Shortcode {
 		$opts = GHRG_Settings::get_options();
 		$cache_key = 'ghrg_repos_' . md5( $opts['github_username'] );
 
-		// Transients don't expose their set time directly, so we track it separately.
 		$timeout_key = '_transient_timeout_' . $cache_key;
 		$timeout = get_option( $timeout_key );
 
